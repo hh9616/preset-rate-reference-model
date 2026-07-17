@@ -34,7 +34,7 @@ jobs:
 
       - name: 更新模型数据
         env:
-          START_DATE: '2020-01-02'
+          START_DATE: '2025-01-01'
           FETCH_WORKERS: '8'
         run: python scripts/update_model_data.py
 

@@ -404,6 +404,8 @@
       const dates = rows.map(r => r.date);
       const modelSeries = rows.map(r => computedModel(r));
       const liabilitySeries = rows.map(r => r.liabilityAnchor);
+      const lprSeries = rows.map(r => r.lpr5y);
+      const depositSeries = rows.map(r => r.deposit5yMean);
       const assetSeries = rows.map(r => r[assetField[currentPolicy]]);
       const ma250Series = rows.map(r => r[ma250Field[currentPolicy]]);
       const ma750Series = rows.map(r => r[ma750Field[currentPolicy]]);
@@ -411,16 +413,18 @@
       const actualSeries = rows.map(r => Number.isFinite(r.actualReferenceValue) ? r.actualReferenceValue : null);
 
       chart.setOption({
-        color: ["#1f5f99", "#cf3f4f", "#1f9d68", "#c98222", "#7a62c7", "#52667a", "#111827"],
+        color: ["#1f5f99", "#cf3f4f", "#8b5e34", "#00a0a8", "#1f9d68", "#c98222", "#7a62c7", "#52667a", "#111827"],
         tooltip: { trigger: "axis", valueFormatter: v => Number.isFinite(v) ? `${v.toFixed(4)}%` : "--" },
         legend: { top: 0, type: "scroll" },
-        grid: { left: 48, right: 20, top: 70, bottom: 46 },
+        grid: { left: 48, right: 20, top: 82, bottom: 46 },
         xAxis: { type: "category", data: dates, boundaryGap: false },
         yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
         dataZoom: [{ type: "inside" }, { type: "slider", height: 20, bottom: 8 }],
         series: [
           { name: "模型测算研究值", type: "line", showSymbol: false, data: modelSeries, lineStyle: { width: 2.4 } },
           { name: "负债端利率锚", type: "line", showSymbol: false, data: liabilitySeries },
+          { name: "5年期以上LPR", type: "line", showSymbol: false, data: lprSeries, lineStyle: { type: "dotted" } },
+          { name: "六大行5年定存均值", type: "line", showSymbol: false, data: depositSeries, lineStyle: { type: "dotted" } },
           { name: "资产端回报（基础回报水平）", type: "line", showSymbol: false, data: assetSeries, lineStyle: { width: 2.4 } },
           { name: "MA250(10年期政策性金融债到期收益率)", type: "line", showSymbol: false, data: ma250Series },
           { name: "MA750(10年期政策性金融债到期收益率)", type: "line", showSymbol: false, data: ma750Series },

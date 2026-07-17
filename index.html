@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预定利率研究值模型</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="data/model-data.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      color: #182235;
+      background: #f4f7fb;
+    }
+    .page { max-width: 1440px; margin: 0 auto; padding: 20px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 16px 18px;
+      background: #fff;
+      border: 1px solid #dfe7f2;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(20, 38, 70, .05);
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .meta { color: #5f6f86; font-size: 13px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #eef4fb;
+      color: #24547d;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .notice {
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      border: 1px solid #f0d69c;
+      border-radius: 8px;
+      color: #6f520d;
+      background: #fff8e5;
+      font-size: 13px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .segmented {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      background: #e8eef6;
+      border-radius: 8px;
+    }
+    .segmented button {
+      border: 0;
+      border-radius: 6px;
+      padding: 7px 12px;
+      color: #40546e;
+      background: transparent;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .segmented button.active {
+      color: #fff;
+      background: #1f5f99;
+      box-shadow: 0 1px 3px rgba(0,0,0,.14);
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .metric {
+      min-height: 112px;
+      padding: 14px;
+      background: #fff;
+      border: 1px solid #dfe7f2;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(20, 38, 70, .05);
+    }
+    .metric-label { color: #607089; font-size: 13px; }
+    .metric-value {
+      margin-top: 10px;
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-sub { margin-top: 8px; color: #748197; font-size: 12px; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .panel {
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #dfe7f2;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(20, 38, 70, .05);
+      min-width: 0;
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+    .formula {
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      color: #304259;
+    }
+    .formula code {
+      display: block;
+      padding: 10px;
+      white-space: normal;
+      line-height: 1.6;
+      color: #163a5d;
+      background: #f0f5fb;
+      border: 1px solid #dce8f5;
+      border-radius: 6px;
+      font-family: Consolas, "Microsoft YaHei", monospace;
+    }
+    .chart { height: 430px; width: 100%; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid #e5ebf3;
+      padding: 8px 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: #36516e; background: #f3f7fc; font-weight: 700; }
+    .empty {
+      padding: 28px;
+      text-align: center;
+      color: #65758a;
+      background: #fff;
+      border: 1px dashed #c7d4e4;
+      border-radius: 8px;
+    }
+    @media (max-width: 980px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .page { padding: 12px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .chart { height: 320px; }
+      .segmented { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div>
+        <h1>预定利率研究值模型</h1>
+        <div class="meta">模型测算研究值，不含调节系数。用于市场利率跟踪与情景研究。</div>
+      </div>
+      <span class="pill" id="updatedAt">等待数据更新</span>
+    </header>
+
+    <div class="notice" id="notice" style="display:none;"></div>
+
+    <section class="controls">
+      <span class="meta">政策性金融债代表口径</span>
+      <div class="segmented" id="policyButtons">
+        <button data-policy="mean" class="active">三者均值</button>
+        <button data-policy="cdb">国开债</button>
+        <button data-policy="adb">农发行债</button>
+        <button data-policy="exim">进出口行债</button>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="metric">
+        <div class="metric-label">模型测算研究值</div>
+        <div class="metric-value" id="modelValue">--</div>
+        <div class="metric-sub" id="modelDate">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">负债端利率锚</div>
+        <div class="metric-value" id="liabilityValue">--</div>
+        <div class="metric-sub">6 个月移动平均</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">基础回报水平</div>
+        <div class="metric-value" id="assetValue">--</div>
+        <div class="metric-sub">MA250 与 MA750 取低</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">触发约束</div>
+        <div class="metric-value" id="bindingValue">--</div>
+        <div class="metric-sub">取负债端与资产端较低者</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">最新政策债 10Y</div>
+        <div class="metric-value" id="policyValue">--</div>
+        <div class="metric-sub" id="policyLabel">三者均值</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>历史走势</h2>
+        <div class="chart" id="mainChart"></div>
+      </div>
+      <div class="panel">
+        <h2>公式口径</h2>
+        <div class="formula">
+          <code>模型测算研究值 = MIN(负债端利率锚, 基础回报水平)</code>
+          <code>负债端利率锚 = MA6(5年期以上LPR + 六大行5年定存均值) / 2</code>
+          <code>基础回报水平 = MIN(MA250(10年期政策性金融债到期收益率), MA750(10年期政策性金融债到期收益率))</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>协会实际研究值对照</h2>
+      <div id="calibrationWrap"></div>
+    </section>
+  </main>
+
+  <script>
+    const DATA = window.MODEL_DATA || { series: [], actualValues: [], warnings: [] };
+    const policyNames = { mean: "三者均值", cdb: "国开债", adb: "农发行债", exim: "进出口行债" };
+    const policyField = { mean: "policy10yMean", cdb: "cdb10yYtm", adb: "adb10yYtm", exim: "exim10yYtm" };
+    const assetField = { mean: "assetBaseReturn_mean", cdb: "assetBaseReturn_cdb", adb: "assetBaseReturn_adb", exim: "assetBaseReturn_exim" };
+    let currentPolicy = "mean";
+    let chart;
+
+    function pct(v) {
+      return Number.isFinite(v) ? `${v.toFixed(2)}%` : "--";
+    }
+
+    function bp(v) {
+      return Number.isFinite(v) ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : "--";
+    }
+
+    function latestUsableRow(rows) {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        if (Number.isFinite(row.liabilityAnchor) && Number.isFinite(row[assetField[currentPolicy]])) return row;
+      }
+      return rows[rows.length - 1];
+    }
+
+    function computedModel(row) {
+      if (!row) return null;
+      const liability = row.liabilityAnchor;
+      const asset = row[assetField[currentPolicy]];
+      if (!Number.isFinite(liability) || !Number.isFinite(asset)) return null;
+      return Math.min(liability, asset);
+    }
+
+    function renderSummary() {
+      const rows = DATA.series || [];
+      const latest = latestUsableRow(rows);
+      const model = computedModel(latest);
+      const asset = latest ? latest[assetField[currentPolicy]] : null;
+      const liability = latest ? latest.liabilityAnchor : null;
+      const policy = latest ? latest[policyField[currentPolicy]] : null;
+
+      document.getElementById("updatedAt").textContent = DATA.updatedAt ? `数据更新：${DATA.updatedAt}` : "等待数据更新";
+      document.getElementById("modelValue").textContent = pct(model);
+      document.getElementById("modelDate").textContent = latest ? latest.date : "首次运行 Actions 后生成";
+      document.getElementById("liabilityValue").textContent = pct(liability);
+      document.getElementById("assetValue").textContent = pct(asset);
+      document.getElementById("policyValue").textContent = pct(policy);
+      document.getElementById("policyLabel").textContent = policyNames[currentPolicy];
+
+      let binding = "--";
+      if (Number.isFinite(liability) && Number.isFinite(asset)) binding = liability <= asset ? "负债端" : "资产端";
+      document.getElementById("bindingValue").textContent = binding;
+
+      const notice = document.getElementById("notice");
+      const warnings = DATA.warnings || [];
+      if (!rows.length) {
+        notice.style.display = "block";
+        notice.textContent = "仓库文件已就绪。请在 GitHub Actions 中手动运行一次工作流，生成正式数据。";
+      } else if (warnings.length) {
+        notice.style.display = "block";
+        notice.textContent = `数据更新完成，但有 ${warnings.length} 条提示。首条：${warnings[0]}`;
+      } else {
+        notice.style.display = "none";
+      }
+    }
+
+    function renderChart() {
+      const rows = DATA.series || [];
+      if (!chart) chart = echarts.init(document.getElementById("mainChart"));
+      const dates = rows.map(r => r.date);
+      const modelSeries = rows.map(r => computedModel(r));
+      const assetSeries = rows.map(r => r[assetField[currentPolicy]]);
+      const lprSeries = rows.map(r => r.lpr5y);
+      const depositSeries = rows.map(r => r.deposit5yMean);
+
+      chart.setOption({
+        color: ["#1f5f99", "#1f9d68", "#c98222", "#7a62c7"],
+        tooltip: { trigger: "axis", valueFormatter: v => Number.isFinite(v) ? `${v.toFixed(4)}%` : "--" },
+        legend: { top: 0 },
+        grid: { left: 48, right: 20, top: 44, bottom: 46 },
+        xAxis: { type: "category", data: dates, boundaryGap: false },
+        yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
+        dataZoom: [{ type: "inside" }, { type: "slider", height: 20, bottom: 8 }],
+        series: [
+          { name: "模型测算研究值", type: "line", showSymbol: false, data: modelSeries },
+          { name: "基础回报水平", type: "line", showSymbol: false, data: assetSeries },
+          { name: "5年期以上LPR", type: "line", showSymbol: false, data: lprSeries },
+          { name: "六大行5年定存均值", type: "line", showSymbol: false, data: depositSeries }
+        ]
+      });
+    }
+
+    function nearestRow(date) {
+      const rows = DATA.series || [];
+      let found = null;
+      for (const row of rows) {
+        if (row.date <= date) found = row;
+        else break;
+      }
+      return found;
+    }
+
+    function renderCalibration() {
+      const actuals = DATA.actualValues || [];
+      if (!actuals.length) {
+        document.getElementById("calibrationWrap").innerHTML = '<div class="empty">暂无协会实际研究值维护表。</div>';
+        return;
+      }
+      const rows = actuals.map(item => {
+        const row = nearestRow(item.asOfDate);
+        const model = computedModel(row);
+        const liability = row ? row.liabilityAnchor : null;
+        const asset = row ? row[assetField[currentPolicy]] : null;
+        const diff = Number.isFinite(model) ? (item.value - model) * 100 : null;
+        return `<tr>
+          <td>${item.quarter}</td>
+          <td>${item.asOfDate}</td>
+          <td>${pct(item.value)}</td>
+          <td>${pct(model)}</td>
+          <td>${pct(liability)}</td>
+          <td>${pct(asset)}</td>
+          <td>${bp(diff)}</td>
+        </tr>`;
+      }).join("");
+      document.getElementById("calibrationWrap").innerHTML = `<table>
+        <thead><tr><th>季度</th><th>基准日</th><th>协会实际值</th><th>模型测算值</th><th>负债端锚</th><th>资产端回报</th><th>实际-模型</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderChart();
+      renderCalibration();
+    }
+
+    document.getElementById("policyButtons").addEventListener("click", e => {
+      const btn = e.target.closest("button[data-policy]");
+      if (!btn) return;
+      currentPolicy = btn.dataset.policy;
+      document.querySelectorAll("#policyButtons button").forEach(b => b.classList.toggle("active", b === btn));
+      renderAll();
+    });
+
+    window.addEventListener("resize", () => chart && chart.resize());
+    renderAll();
+  </script>
+</body>
+</html>

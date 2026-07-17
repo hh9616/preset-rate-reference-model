@@ -35,7 +35,7 @@ jobs:
       - name: 更新模型数据
         env:
           START_DATE: '2026-01-01'
-           MAX_FETCH_DAYS: '90'
+          MAX_FETCH_DAYS: '90'
           FETCH_WORKERS: '4'
         run: python scripts/update_model_data.py
 

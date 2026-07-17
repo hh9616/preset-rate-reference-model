@@ -118,6 +118,25 @@
       margin: 0 0 12px;
       font-size: 16px;
     }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-head h2 { margin: 0; }
+    .export-button {
+      border: 1px solid #b8c9dc;
+      border-radius: 6px;
+      padding: 7px 11px;
+      color: #24547d;
+      background: #f7fbff;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .export-button:hover { background: #eef6ff; }
     .formula {
       display: grid;
       gap: 10px;
@@ -204,7 +223,7 @@
         <div class="metric-sub">6 个月移动平均</div>
       </div>
       <div class="metric">
-        <div class="metric-label">基础回报水平</div>
+        <div class="metric-label">资产端回报（基础回报水平）</div>
         <div class="metric-value" id="assetValue">--</div>
         <div class="metric-sub">MA250 与 MA750 取低</div>
       </div>
@@ -222,15 +241,18 @@
 
     <section class="grid">
       <div class="panel">
-        <h2>历史走势</h2>
+        <div class="panel-head">
+          <h2>历史走势</h2>
+          <button class="export-button" id="exportExcel" type="button">导出 Excel</button>
+        </div>
         <div class="chart" id="mainChart"></div>
       </div>
       <div class="panel">
         <h2>公式口径</h2>
         <div class="formula">
-          <code>模型测算研究值 = MIN(负债端利率锚, 基础回报水平)</code>
+          <code>模型测算研究值 = MIN(负债端利率锚, 资产端回报（基础回报水平）)</code>
           <code>负债端利率锚 = MA6(5年期以上LPR + 六大行5年定存均值) / 2</code>
-          <code>基础回报水平 = MIN(MA250(10年期政策性金融债到期收益率), MA750(10年期政策性金融债到期收益率))</code>
+          <code>资产端回报（基础回报水平） = MIN(MA250(10年期政策性金融债到期收益率), MA750(10年期政策性金融债到期收益率))</code>
         </div>
       </div>
     </section>
@@ -246,6 +268,8 @@
     const policyNames = { mean: "三者均值", cdb: "国开债", adb: "农发行债", exim: "进出口行债" };
     const policyField = { mean: "policy10yMean", cdb: "cdb10yYtm", adb: "adb10yYtm", exim: "exim10yYtm" };
     const assetField = { mean: "assetBaseReturn_mean", cdb: "assetBaseReturn_cdb", adb: "assetBaseReturn_adb", exim: "assetBaseReturn_exim" };
+    const ma250Field = { mean: "policy10yMa250_mean", cdb: "policy10yMa250_cdb", adb: "policy10yMa250_adb", exim: "policy10yMa250_exim" };
+    const ma750Field = { mean: "policy10yMa750_mean", cdb: "policy10yMa750_cdb", adb: "policy10yMa750_adb", exim: "policy10yMa750_exim" };
     let currentPolicy = "mean";
     let chart;
 
@@ -255,6 +279,74 @@
 
     function bp(v) {
       return Number.isFinite(v) ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : "--";
+    }
+
+    function exportValue(v) {
+      return Number.isFinite(v) ? Number(v.toFixed(6)) : "";
+    }
+
+    function htmlCell(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function downloadExcel() {
+      const rows = DATA.series || [];
+      const headers = [
+        "日期",
+        "政策性金融债口径",
+        "模型测算研究值",
+        "负债端利率锚",
+        "资产端回报（基础回报水平）",
+        "MA250(10年期政策性金融债到期收益率)",
+        "MA750(10年期政策性金融债到期收益率)",
+        "10年期政策性金融债到期收益率",
+        "协会实际值",
+        "实际-模型(bp)",
+        "5年期以上LPR",
+        "六大行5年定存均值",
+        "国债10Y",
+        "国开债10Y",
+        "农发行债10Y",
+        "进出口行债10Y"
+      ];
+      const body = rows.map(row => {
+        const model = computedModel(row);
+        const actual = row.actualReferenceValue;
+        const diff = Number.isFinite(model) && Number.isFinite(actual) ? (actual - model) * 100 : null;
+        return [
+          row.date,
+          policyNames[currentPolicy],
+          exportValue(model),
+          exportValue(row.liabilityAnchor),
+          exportValue(row[assetField[currentPolicy]]),
+          exportValue(row[ma250Field[currentPolicy]]),
+          exportValue(row[ma750Field[currentPolicy]]),
+          exportValue(row[policyField[currentPolicy]]),
+          exportValue(actual),
+          exportValue(diff),
+          exportValue(row.lpr5y),
+          exportValue(row.deposit5yMean),
+          exportValue(row.gov10yYtm),
+          exportValue(row.cdb10yYtm),
+          exportValue(row.adb10yYtm),
+          exportValue(row.exim10yYtm)
+        ];
+      });
+      const table = `<table><thead><tr>${headers.map(h => `<th>${htmlCell(h)}</th>`).join("")}</tr></thead><tbody>${body.map(row => `<tr>${row.map(v => `<td>${htmlCell(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      const html = `<!doctype html><html><head><meta charset="UTF-8"></head><body>${table}</body></html>`;
+      const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `预定利率研究值_${policyNames[currentPolicy]}_${new Date().toISOString().slice(0, 10)}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     }
 
     function latestUsableRow(rows) {
@@ -311,27 +403,32 @@
       if (!chart) chart = echarts.init(document.getElementById("mainChart"));
       const dates = rows.map(r => r.date);
       const modelSeries = rows.map(r => computedModel(r));
+      const liabilitySeries = rows.map(r => r.liabilityAnchor);
       const assetSeries = rows.map(r => r[assetField[currentPolicy]]);
-      const lprSeries = rows.map(r => r.lpr5y);
-      const depositSeries = rows.map(r => r.deposit5yMean);
+      const ma250Series = rows.map(r => r[ma250Field[currentPolicy]]);
+      const ma750Series = rows.map(r => r[ma750Field[currentPolicy]]);
+      const policySpotSeries = rows.map(r => r[policyField[currentPolicy]]);
+      const actualSeries = rows.map(r => Number.isFinite(r.actualReferenceValue) ? r.actualReferenceValue : null);
 
       chart.setOption({
-        color: ["#1f5f99", "#1f9d68", "#c98222", "#7a62c7"],
+        color: ["#1f5f99", "#cf3f4f", "#1f9d68", "#c98222", "#7a62c7", "#52667a", "#111827"],
         tooltip: { trigger: "axis", valueFormatter: v => Number.isFinite(v) ? `${v.toFixed(4)}%` : "--" },
-        legend: { top: 0 },
-        grid: { left: 48, right: 20, top: 44, bottom: 46 },
+        legend: { top: 0, type: "scroll" },
+        grid: { left: 48, right: 20, top: 70, bottom: 46 },
         xAxis: { type: "category", data: dates, boundaryGap: false },
         yAxis: { type: "value", scale: true, axisLabel: { formatter: "{value}%" } },
         dataZoom: [{ type: "inside" }, { type: "slider", height: 20, bottom: 8 }],
         series: [
-          { name: "模型测算研究值", type: "line", showSymbol: false, data: modelSeries },
-          { name: "基础回报水平", type: "line", showSymbol: false, data: assetSeries },
-          { name: "5年期以上LPR", type: "line", showSymbol: false, data: lprSeries },
-          { name: "六大行5年定存均值", type: "line", showSymbol: false, data: depositSeries }
+          { name: "模型测算研究值", type: "line", showSymbol: false, data: modelSeries, lineStyle: { width: 2.4 } },
+          { name: "负债端利率锚", type: "line", showSymbol: false, data: liabilitySeries },
+          { name: "资产端回报（基础回报水平）", type: "line", showSymbol: false, data: assetSeries, lineStyle: { width: 2.4 } },
+          { name: "MA250(10年期政策性金融债到期收益率)", type: "line", showSymbol: false, data: ma250Series },
+          { name: "MA750(10年期政策性金融债到期收益率)", type: "line", showSymbol: false, data: ma750Series },
+          { name: "10年期政策性金融债到期收益率", type: "line", showSymbol: false, data: policySpotSeries, lineStyle: { type: "dashed" } },
+          { name: "协会实际值", type: "scatter", symbolSize: 9, data: actualSeries, z: 3 }
         ]
-      });
+      }, true);
     }
-
     function nearestRow(date) {
       const rows = DATA.series || [];
       let found = null;
@@ -365,7 +462,7 @@
         </tr>`;
       }).join("");
       document.getElementById("calibrationWrap").innerHTML = `<table>
-        <thead><tr><th>季度</th><th>基准日</th><th>协会实际值</th><th>模型测算值</th><th>负债端锚</th><th>资产端回报</th><th>实际-模型</th></tr></thead>
+        <thead><tr><th>季度</th><th>基准日</th><th>协会实际值</th><th>模型测算值</th><th>负债端利率锚</th><th>资产端回报（基础回报水平）</th><th>实际-模型</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     }
@@ -384,6 +481,7 @@
       renderAll();
     });
 
+    document.getElementById("exportExcel").addEventListener("click", downloadExcel);
     window.addEventListener("resize", () => chart && chart.resize());
     renderAll();
   </script>

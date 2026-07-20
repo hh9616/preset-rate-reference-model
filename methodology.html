@@ -17,11 +17,17 @@
     .back { border: 1px solid #b8c9dc; border-radius: 6px; padding: 7px 11px; color: #24547d; background: #f7fbff; font-weight: 700; text-decoration: none; white-space: nowrap; }
     section { padding: 18px; margin-bottom: 16px; }
     .formula { padding: 12px; border: 1px solid #dce8f5; border-radius: 6px; background: #f0f5fb; color: #163a5d; font-weight: 700; line-height: 1.7; }
+    .note { padding: 12px; border: 1px solid #f0d69c; border-radius: 6px; background: #fff8e5; color: #6f520d; line-height: 1.7; }
+    .term-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .term { padding: 12px; border: 1px solid #dfe7f2; border-radius: 8px; background: #f8fafc; }
+    .term strong { display: block; margin-bottom: 6px; color: #163a5d; }
+    a { color: #1d4ed8; }
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
     th, td { border-bottom: 1px solid #e5ebf3; padding: 9px 10px; text-align: left; vertical-align: top; }
     th { color: #36516e; background: #f3f7fc; }
     ul { margin: 8px 0 0 18px; padding: 0; }
+    @media (max-width: 760px) { .term-grid { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .page { padding: 12px; } header { display: block; } .back { display: inline-flex; margin-top: 12px; } }
   </style>
 </head>
@@ -34,28 +40,82 @@
       </div>
       <a class="back" href="index.html">返回首页</a>
     </header>
+
     <section>
       <h2>核心公式</h2>
-      <div class="formula">模型预测值 = Min【(5 年期 LPR + 六大行 5 年定期存款利率均值的 6 个月移动平均) / 2，资产端回报（基础回报水平）】</div>
-      <p>资产端回报（基础回报水平）= Min【10 年期国债到期收益率与税收溢价之和的 250 日移动平均，10 年期国债到期收益率与税收溢价之和的 750 日移动平均】。</p>
-      <p>政策性金融债支持国开债、农发行债、进出口行债和三者均值切换，用于观察利率趋势和移动平均表现。</p>
+      <div class="formula">预定利率研究值 = Min【(5 年期 LPR + 六大行 5 年定期存款利率均值的 6 个月移动平均) / 2，基础回报水平】 × 调整系数</div>
+      <p>本网页首页展示的“模型预测值”是上面公式中 Min【负债端利率锚，资产端回报（基础回报水平）】这一部分，暂未乘以调整系数。</p>
+      <div class="note">重要说明：调整系数通常需要结合行业资产负债管理情况、经营发展情况、市场利率趋势等综合判断，无法仅靠公开利率数据稳定自动化。因此本模型当前不考虑调整系数，结果更适合作为市场利率跟踪、触发监测和内部研究参考，不等同于最终监管或协会发布值。</div>
+      <div class="term-grid">
+        <div class="term">
+          <strong>负债端利率锚</strong>
+          反映保险产品负债端定价可参考的利率环境。网页按“5 年期以上 LPR”和“六大行 5 年定期存款利率均值”的 6 个月移动平均计算，再除以 2，观察长期资金成本和居民储蓄替代收益的变化。
+        </div>
+        <div class="term">
+          <strong>资产端回报（基础回报水平）</strong>
+          反映保险资金长期资产配置能获得的基础收益水平。原始口径可理解为“10 年期国债到期收益率 + 税收溢价”的 250 日、750 日移动平均取低。网页中将其命名为“资产端回报（基础回报水平）”，并用 10 年期政策性金融债到期收益率作为可自动化观测口径。
+        </div>
+      </div>
+      <p>政策性金融债支持国开债、农发行债、进出口行债和三者均值切换。这个切换用于观察不同政策性金融债口径下的利率趋势、移动平均和模型预测值变化。</p>
     </section>
+
     <section>
       <h2>数据来源与维护方式</h2>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>数据项</th><th>用途</th><th>来源或维护方式</th></tr></thead>
+          <thead><tr><th>数据项</th><th>用途</th><th>来源或维护方式</th><th>网站名称和网址</th></tr></thead>
           <tbody>
-            <tr><td>10 年期国债到期收益率</td><td>计算资产端回报，并与税收溢价一起做移动平均。</td><td>自动抓取公开收益率曲线数据。</td></tr>
-            <tr><td>10 年期政策性金融债到期收益率</td><td>用于国开债、农发行债、进出口行债和三者均值口径监测。</td><td>自动抓取公开收益率曲线数据。</td></tr>
-            <tr><td>5 年期 LPR</td><td>参与负债端利率锚计算。</td><td>人工维护事件表，利率调整时新增记录。</td></tr>
-            <tr><td>六大行 5 年定期存款利率均值</td><td>参与负债端利率锚计算。</td><td>人工维护事件表，六大行挂牌利率调整时更新。</td></tr>
-            <tr><td>协会实际研究值</td><td>展示实际值，并与模型预测值做历史回测。</td><td>人工维护表，协会公布后录入季度、基准日和实际值。</td></tr>
-            <tr><td>普通型预定利率上限</td><td>用于触发监测，计算“当前上限 - 模型预测值”。</td><td>人工维护事件表，监管或行业公告确认调整后更新。</td></tr>
+            <tr>
+              <td>10 年期国债到期收益率</td>
+              <td>原始公式中用于计算基础回报水平，并与税收溢价一起做 250 日、750 日移动平均。</td>
+              <td>自动抓取公开收益率曲线数据；当前网页主要展示政策性金融债口径，保留国债数据用于研究对照。</td>
+              <td>中债收益率曲线：<a href="https://yield.chinabond.com.cn/cbweb-mn/yield_main?locale=zh_CN" target="_blank" rel="noopener">https://yield.chinabond.com.cn/cbweb-mn/yield_main?locale=zh_CN</a></td>
+            </tr>
+            <tr>
+              <td>10 年期政策性金融债到期收益率</td>
+              <td>作为“10 年期国债到期收益率 + 税收溢价”的自动化观测口径，用于资产端回报（基础回报水平）和历史走势图。</td>
+              <td>自动抓取公开收益率曲线数据；支持国开债、农发行债、进出口行债、三者均值切换。</td>
+              <td>中债收益率曲线：<a href="https://yield.chinabond.com.cn/cbweb-mn/yield_main?locale=zh_CN" target="_blank" rel="noopener">https://yield.chinabond.com.cn/cbweb-mn/yield_main?locale=zh_CN</a></td>
+            </tr>
+            <tr>
+              <td>5 年期以上 LPR</td>
+              <td>参与负债端利率锚计算，代表长期贷款定价参考。</td>
+              <td>人工维护事件表；LPR 调整时新增记录，网页自动按日期取当时有效值。</td>
+              <td>中国货币网 LPR：<a href="https://www.chinamoney.com.cn/chinese/bklpr/" target="_blank" rel="noopener">https://www.chinamoney.com.cn/chinese/bklpr/</a></td>
+            </tr>
+            <tr>
+              <td>六大行 5 年定期存款利率均值</td>
+              <td>参与负债端利率锚计算，代表居民长期储蓄替代收益。</td>
+              <td>人工维护事件表；六大行挂牌利率调整时更新各行 5 年定期存款利率，再取均值。</td>
+              <td>工商银行、农业银行、中国银行、建设银行、邮储银行、交通银行官网人民币存款利率页面。</td>
+            </tr>
+            <tr>
+              <td>协会实际研究值</td>
+              <td>用于首页展示实际值，并与模型预测值做历史回测误差比较。</td>
+              <td>人工维护表；协会公布后录入季度、基准日和实际值。</td>
+              <td>中国保险行业协会官网：<a href="https://www.iachina.cn/" target="_blank" rel="noopener">https://www.iachina.cn/</a></td>
+            </tr>
+            <tr>
+              <td>普通型预定利率上限</td>
+              <td>用于触发监测，计算“当前上限 - 模型预测值”。</td>
+              <td>人工维护事件表；监管或行业公告确认调整后更新。本网页当前维护 2025-09-01 起普通型上限为 2.0%。</td>
+              <td>中国人寿公告：<a href="https://www.e-chinalife.com/c/2025-07-25/e8b92452-63df-4ad2-bbb0-657ab4962f8c.shtml" target="_blank" rel="noopener">https://www.e-chinalife.com/c/2025-07-25/e8b92452-63df-4ad2-bbb0-657ab4962f8c.shtml</a></td>
+            </tr>
           </tbody>
         </table>
       </div>
     </section>
+
+    <section>
+      <h2>口径边界</h2>
+      <ul>
+        <li>首页“模型预测值”不是完整的最终预定利率研究值，因为未乘以调整系数。</li>
+        <li>首页“资产端回报（基础回报水平）”是对公式中基础回报水平的网页展示名称，目的是让非技术读者理解它代表资产端长期收益约束。</li>
+        <li>政策性金融债收益率用于自动化监测“国债收益率 + 税收溢价”的近似口径；国开债、农发行债、进出口行债和三者均值都可以切换观察。</li>
+        <li>人工维护表包括 LPR、六大行 5 年定存、协会实际研究值、普通型预定利率上限。若权威公告更新，需要同步维护这些表或页面口径。</li>
+      </ul>
+    </section>
+
     <section>
       <h2>自动更新流程</h2>
       <ul>
